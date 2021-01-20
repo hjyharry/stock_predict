@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+{% extends 'stock/detail_base.html' %}
+{% load static %}
+{% load templatehelper %}
+
+{% block title %}{{ cur_stock.NAME }}{% endblock %}
+{% block code %}{{ cur_stock.CODE_id }}{% endblock %}
+{% block name %}{{ cur_stock.NAME }}{% endblock %}
+
+{% block table %}
+    <table class="table table-dark table-borderless">
+        <tbody>
+            <tr>
+                <td class="col-1" style="width: fit-content;vertical-align: middle;text-align: center;">
+                    <h1>
+                        <a style="color: white" href="/index/{{ cur_stock.CODE_id }}">{{ cur_stock.NAME }}</a>
+                        <span>
+                            <a href="/index/{{ cur_stock.CODE_id }}" style="color:white;display: block">{{ cur_stock.CODE_id }}</a>
+                        </span>
+                    </h1>
+                </td>
+                <td class="col-2" style="width: fit-content">
+                    <table class="table table-dark">
+                        <tbody>
+                            <tr>
+                                <td class="col-1" style="width: 20%;">
+                                    {% if cur_stock.UPDOWN < 0 %}
+                                        <h1 style="color: lightgreen">{{ cur_stock.PRICE }}
+                                            <strong>&#8595;</strong>
+                                        </h1>
+                                    {% elif cur_stock.UPDOWN > 0 %}
+                                        <h1 style="color: red">{{ cur_stock.PRICE }}
+                                            <strong>&#8593;</strong>
+                                        </h1>
+                                    {% else %}
+                                        <h1 style="color: white">{{ cur_stock.PRICE }}
+                                            <strong>-</strong>
+                                        </h1>
+                                    {% endif %}
+                                </td>
+                                <td class="col-2" style="width: 10%">
+                                    {% if cur_stock.UPDOWN > 0 %}
+                                        <strong style="color: orangered">{{ cur_stock.UPDOWN }}</strong><br>
+                                        <strong style="color: orangered">{{ cur_stock.PERCENT|percent }}%</strong>
+                                    {% elif cur_stock.UPDOWN < 0 %}
+                                        <strong style="color: lightgreen">{{ cur_stock.UPDOWN }}</strong><br>
+                                        <strong style="color: lightgreen">{{ cur_stock.PERCENT|percent }}%</strong>
+                                    {% else %}
+                                        <strong style="color: whitesmoke">{{ cur_stock.UPDOWN }}</strong><br>
+                                        <strong style="color: whitesmoke">{{ cur_stock.PERCENT|percent }}%</strong>
+                                    {% endif %}
+                                </td>
+                                <td class="col-3" style="width: 14%">
+                                    今开:<strong>{{ cur_stock.OPEN }}</strong><br>
+                                    昨收:<strong>{{ cur_stock.YESTCLOSE }}</strong>
+                                </td>
+                                <td class="col-4" style="width: 14%">
+                                    最高:<strong>{{ cur_stock.HIGH }}</strong><br>
+                                    最低:<strong>{{ cur_stock.LOW }}</strong>
+                                </td>
+                                <td class="col-5" style="width: 18%">
+                                    成交量:<strong>{{ cur_stock.VOLUME|thousands }}万手</strong><br>
+                                    成交额:<strong>{{ cur_stock.TURNOVER|billion }}亿</strong>
+                                </td>
+                                <td class="col-6" style="width: 15%">
+                                    量比:<strong>{{ cur_stock.LB|floatformat:2 }}</strong><br>
+                                    换手:<strong>{{ cur_stock.HS|percent }}%</strong>
+                                </td>
+                                <td class="col-7" style="vertical-align: middle">
+                                    <form action="/index/{{ cur_stock.CODE_id }}" method="post">
+                                        {% csrf_token %}
+                                        <button class="btn-md btn-light" type="submit" name="favourite" {% if not request.session.is_login %}disabled{% endif %}>加入收藏</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="col-1" colspan="3">
+                                    股票更新时间：<strong>{{ cur_stock.DATE }}</strong>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+{% endblock %}
+
+{% block content %}
+    <ul class="nav nav-tabs">
+        <li class="nav-item">
+            <a class="nav-link {% if current_year_k %}active{% endif %}" data-toggle="tab" href="#k_stock">K线图</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if current_year %}active{% endif %}" data-toggle="tab" href="#history_stock">股票历史信息</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-toggle="tab" href="#company">公司资料</a>
+        </li>
+
+    </ul><br>
+    <div class="tab-content">
+        <div id="k_stock" class="container tab-pane {% if  current_year_k %}active{% endif %}">
+            <form action="/index/{{ cur_stock.CODE_id }}" method="post">
+                {% csrf_token %}
+                <div class="form-row justify-content-end">
+                    <div class="col-sm-2">
+                        <select class="form-control" name="selected_year">
+                            {% for year in option_year %}
+                                <option value="{{ year }}" {% if year == current_year_k %}selected{% endif %}>{{ year }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <button class="btn btn-secondary" type="submit" name="selected_k">查询</button>
+                    </div>
+                </div>
+            </form>
+            <div id="k_line" style="max-width: 1500px;width: 1100px;height:800px;max-height: 1400px;"></div>
+        </div>
+        <div id="history_stock" class="container tab-pane {% if current_year %}active{% endif %}">
+            <form action="/index/{{ cur_stock.CODE_id }}" method="post">
+                {% csrf_token %}
+                <div class="form-row justify-content-end">
+                    <div class="col-sm-2">
+                        <select class="form-control" id="selected_year" name="selected_year">
+                            {% for year in option_year %}
+                                <option value="{{ year }}" {% if year == current_year %}selected{% endif %}>{{ year }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-sm-2">
+                        <select class="form-control" id="selected_year" name="selected_season">
+                            <option value="season1"{% if current_season == "season1" %}selected{% endif %}>一季度</option>
+                            <option value="season2"{% if current_season == "season2" %}selected{% endif %}>二季度</option>
+                            <option value="season3"{% if current_season == "season3" %}selected{% endif %}>三季度</option>
+                            <option value="season4"{% if current_season == "season4" %}selected{% endif %}>四季度</option>
+                            <option value="all" {% if current_season == "all" %}selected{% endif %}>全部</option>
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <button class="btn btn-secondary" type="submit" name="selected_s">查询</button>
+                    </div>
+                </div>
+            </form><br>
+            <table id="stock_history" class="table-sm table-striped table-hover"></table>
+        </div>
+        <div id="company" class="container tab-pane fade">
+            <div class="row">
+                <div class="col-sm-8">
+                    <div class="alert alert-dark" role="alert">
+                        公司资料
+                    </div>
+                    <table style="table-layout: fixed;font-size: 15px" class="table table-sm table-striped table-bordered">
+                        <tbody>
+                            <tr>
+                                <td>组织形式</td>
+                                {% if company_detail.form %}
+                                    <td>{{ company_detail.form }}</td>
+                                {% else %}
+                                    <td>--</td>
+                                {% endif %}
+                                <td>地域</td>
+                                {% if company_detail.region %}
+                                    <td>{{ company_detail.region }}</td>
+                                {% else %}
+                                    <td>--</td>
+                                {% endif %}
+                            </tr>
+                            <tr>
+                                <td>公司简称</td>
+                                {% if company_detail.name %}
+                                    <td>{{ company_detail.name }}</td>
+                                {% else %}
+                                    <td>--</td>
+                                {% endif %}
+                                <td>办公地址</td>
+                                {% if company_detail.location %}
+                                    <td>{{ company_detail.location }}</td>
+                                {% else %}
+                                    <td>--</td>
+                                {% endif %}
+                            </tr>
+                            <tr>
+                                <td>公司全称</td>
+                                {% if company_detail.full_name %}
+                                    <td>{{ company_detail.full_name }}</td>
+                                {% else %}
+                                    <td>--</td>
+                                {% endif %}
+                                <td>公司电话</td>
+                                {% if company_detail.phone_c %}
+                                    <td>{{ company_detail.phone_c }}</td>
+                                {% else %}
+                                    <td>--</td>
+                                {% endif %}
+                            </tr>
+                             <tr>
+                                <td>英文名称</td>
+                                {% if company_detail.name_e %}
+                                    <td>{{ company_detail.name_e }}</td>
+                                {% else %}
+                                    <td>--</td>
+                                {% endif %}
+                                <td>公司电子邮箱</td>
+                                {% if company_detail.email_c %}
+                                    <td>{{ company_detail.email_c }}</td>
+                                {% else %}
+                                    <td>--</td>
+                                {% endif %}
+                            </tr>
+                             <tr>
+                                <td>注册资本</td>
+                                {% if company_detail.capital %}
+                                    <td>{{ company_detail.capital }}</td>
+                                {% else %}
+                                    <td>--</td>
+                                {% endif %}
+                                <td>董事长</td>
+                                {% if company_detail.chairman %}
+                                    <td>{{ company_detail.chairman }}</td>
+                                {% else %}
+                                    <td>--</td>
+                                {% endif %}
+                            </tr>
+                             <tr>
+                                <td>员工人数</td>
+                                {% if company_detail.number %}
+                                    <td>{{ company_detail.number }}</td>
+                                {% else %}
+                                    <td>--</td>
+                                {% endif %}
+                                <td>董事会秘书</td>
+                                {% if company_detail.secretary %}
+                                    <td>{{ company_detail.secretary }}</td>
+                                {% else %}
+                                    <td>--</td>
+                                {% endif %}
+                            </tr>
+                             <tr>
+                                <td>法人代表</td>
+                                {% if company_detail.representative %}
+                                    <td>{{ company_detail.representative }}</td>
+                                {% else %}
+                                    <td>--</td>
+                                {% endif %}
+                                <td>董秘电话</td>
+                                {% if company_detail.phone_s %}
+                                    <td>{{ company_detail.phone_s }}</td>
+                                {% else %}
+                                    <td>--</td>
+                                {% endif %}
+                            </tr>
+                             <tr>
+                                <td>总经理</td>
+                                {% if company_detail.general_manager %}
+                                    <td>{{ company_detail.general_manager }}</td>
+                                {% else %}
+                                    <td>--</td>
+                                {% endif %}
+                                <td>董秘传真</td>
+                                {% if company_detail.fax_s %}
+                                    <td>{{ company_detail.fax_s }}</td>
+                                {% else %}
+                                    <td>--</td>
+                                {% endif %}
+                            </tr>
+                             <tr>
+                                <td>信息披露网址</td>
+                                {% if company_detail.website %}
+                                    <td>{{ company_detail.website }}</td>
+                                {% else %}
+                                    <td>--</td>
+                                {% endif %}
+                                <td>信息披露报纸名称</td>
+                                {% if company_detail.newspaper %}
+                                    <td>{{ company_detail.newspaper }}</td>
+                                {% else %}
+                                    <td>--</td>
+                                {% endif %}
+                            </tr>
+                             <tr>
+                                <td>主营业务</td>
+                                <td colspan="3">
+                                    {% if company_detail.business_m %}
+                                        {{ company_detail.business_m }}
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>经营范围</td>
+                                <td colspan="3">
+                                    {% if company_detail.business_s %}
+                                        {{ company_detail.business_s }}
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>公司沿革</td>
+                                <td colspan="3">
+                                    {% if company_detail.history %}
+                                        {{ company_detail.history }}
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="col-sm-4">
+                    <div class="alert alert-dark" role="alert">
+                        IPO资料
+                    </div>
+                    <table style="table-layout: fixed;font-size: 15px" class="table table-sm table-striped table-bordered">
+                        <tbody>
+                            <tr>
+                                <td>成立日期</td>
+                                <td>
+                                    {% if company_detail.date_set %}
+                                        {{ company_detail.date_set }}
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>成立日期</td>
+                                <td>
+                                    {% if company_detail.type %}
+                                        {{ company_detail.type }}
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>上市日期</td>
+                                <td>
+                                    {% if company_detail.date_launch %}
+                                        {{ company_detail.date_launch }}
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>发行方式</td>
+                                <td>
+                                    {% if company_detail.type %}
+                                        {{ company_detail.type }}
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>面值</td>
+                                <td>
+                                    {% if company_detail.value %}
+                                        {{ company_detail.value }}
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>发行数量</td>
+                                <td>
+                                    {% if company_detail.num_issue %}
+                                        {{ company_detail.num_issue }}
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>发行价格</td>
+                                <td>
+                                    {% if company_detail.price_issue %}
+                                        {{ company_detail.price_issue }}
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>募资资金总额</td>
+                                <td>
+                                    {% if company_detail.total_price %}
+                                        {{ company_detail.total_price }}
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>发行费用</td>
+                                <td>
+                                    {% if company_detail.total_issue %}
+                                        {{ company_detail.total_issue }}
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>发行中签率</td>
+                                <td>
+                                    {% if company_detail.rate_issue %}
+                                        {{ company_detail.rate_issue }}
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>发行市盈率</td>
+                                <td>
+                                    {% if company_detail.PE_ratio %}
+                                        {{ company_detail.PE_ratio }}
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>发行后每股收益</td>
+                                <td>
+                                    {% if company_detail.earn_per %}
+                                        {{ company_detail.earn_per }}
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>发行后每股净资产</td>
+                                <td>
+                                    {% if company_detail.net_worth %}
+                                        {{ company_detail.net_worth }}
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>上市首日开盘价</td>
+                                <td>
+                                    {% if company_detail.open_first %}
+                                        {{ company_detail.open_first }}
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>上市首日收盘价</td>
+                                <td>
+                                    {% if company_detail.close_first %}
+                                        {{ company_detail.close_first }}
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>上市首日换手率</td>
+                                <td>
+                                    {% if company_detail.turnover_first %}
+                                        {{ company_detail.turnover_first }}
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>主承销商</td>
+                                <td>
+                                    {% if company_detail.underwriter %}
+                                        {{ company_detail.underwriter }}
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>上市保荐人</td>
+                                <td>
+                                    {% if company_detail.sponsor_list %}
+                                        {{ company_detail.sponsor_list }}
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>会计师事务所</td>
+                                <td>
+                                    {% if company_detail.firm_account %}
+                                        {{ company_detail.firm_account }}
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+{% endblock %}
+
+{% block script %}
+    <link href="{% static 'CSS/detail.css' %}">
+    <script>
+        var data = {{ selected_stock|safe }}
+        $('#stock_history').bootstrapTable('destroy').bootstrapTable({
+            data : data,
+            method : 'POST',
+            pagination : true,
+            pageSize:25,
+            columns:[
+                {
+                    title:'日期',
+                    field:'date',
+                    sortable:true,
+                },
+                {
+                    title:'开盘价',
+                    field:'open',
+                },
+                {
+                    title:'最高价',
+                    field:'high',
+                },
+                {
+                    title:'最低价',
+                    field:'low',
+                },
+                {
+                    title:'收盘价',
+                    field:'close',
+                },
+                {
+                    title:'涨跌额',
+                    field:'updown',
+                    cellStyle:function (value){
+                        if (value > 0){
+                            return {css: {"color":"red"}}
+                        }else if(value < 0){
+                            return {css: {"color":"green"}}
+                        }else{
+                            return {css: {"color":"black"}}
+                        }
+                    }
+                },
+                {
+                    title:'涨跌幅',
+                    field:'percent',
+                    formatter:function (value){
+                        return value.toFixed(2);
+                    },
+                    cellStyle:function (value){
+                        if (value > 0){
+                            return {css: {"color":"red"}}
+                        }else if(value < 0){
+                            return {css: {"color":"green"}}
+                        }else{
+                            return {css: {"color":"black"}}
+                        }
+                    }
+                },
+                {
+                    title:'换手率',
+                    field:'hs',
+                    formatter:function (value){
+                        return value.toFixed(2);
+                    }
+                },
+                {
+                    title:'成交量',
+                    field:'volumn',
+                }
+            ]
+
+        })
+
+        var k_data = splitData({{ k_data|safe }})
+        var upColor = '#ec0000';
+        var downColor = '#00da3c';
+
+        function splitData(rawData) {
+            var categoryData = [];
+            var values = [];
+            var volumes = [];
+            for (var i = 0; i < rawData.length; i++) {
+                categoryData.push(rawData[i].splice(0, 1)[0]);
+                values.push(rawData[i]);
+                volumes.push([i, rawData[i][4], rawData[i][0] > rawData[i][1] ? 1 : -1]);
+            }
+
+            return {
+                categoryData: categoryData,
+                values: values,
+                volumes: volumes
+            };
+        }
+        function calculateMA(dayCount, data) {
+            var result = [];
+            for (var i = 0, len = data.values.length; i < len; i++) {
+                if (i < dayCount) {
+                    result.push('-');
+                    continue;
+                }
+                var sum = 0;
+                for (var j = 0; j < dayCount; j++) {
+                    sum += data.values[i - j][1];
+                }
+                result.push(+(sum / dayCount).toFixed(3));
+            }
+            return result;
+        }
+
+        var myChart = echarts.init(document.getElementById('k_line'))
+        myChart.setOption(option = {
+
+            backgroundColor: '#fff',
+            animation: false,
+            legend: {
+                bottom: 10,
+                left: 'center',
+                data: ['{{ cur_stock.NAME }}', 'MA5', 'MA10', 'MA20', 'MA30']
+            },
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: {
+                    type: 'cross'
+                },
+                backgroundColor: 'rgba(245, 245, 245, 0.8)',
+                borderWidth: 1,
+                borderColor: '#ccc',
+                padding: 10,
+                textStyle: {
+                    color: '#000'
+                },
+                position: function (pos, params, el, elRect, size) {
+                    var obj = {top: 10};
+                    obj[['left', 'right'][+(pos[0] < size.viewSize[0] / 2)]] = 30;
+                    return obj;
+                }
+            },
+            axisPointer: {
+                link: {xAxisIndex: 'all'},
+                label: {
+                    backgroundColor: '#777'
+                }
+            },
+            toolbox: {
+                feature: {
+                    dataZoom: {
+                        yAxisIndex: false
+                    },
+                    brush: {
+                        type: ['lineX', 'clear']
+                    }
+                }
+            },
+            brush: {
+                xAxisIndex: 'all',
+                brushLink: 'all',
+                outOfBrush: {
+                    colorAlpha: 0.1
+                }
+            },
+            visualMap: {
+                show: false,
+                seriesIndex: 5,
+                dimension: 2,
+                pieces: [{
+                    value: 1,
+                    color: downColor
+                }, {
+                    value: -1,
+                    color: upColor
+                }]
+            },
+            grid: [
+                {
+                    left: '10%',
+                    right: '8%',
+                    height: '50%'
+                },
+                {
+                    left: '10%',
+                    right: '8%',
+                    top: '63%',
+                    height: '16%'
+                }
+            ],
+            xAxis: [
+                {
+                    type: 'category',
+                    data: k_data.categoryData,
+                    scale: true,
+                    boundaryGap: false,
+                    axisLine: {onZero: false},
+                    splitLine: {show: false},
+                    splitNumber: 20,
+                    min: 'dataMin',
+                    max: 'dataMax',
+                    axisPointer: {
+                        z: 100
+                    }
+                },
+                {
+                    type: 'category',
+                    gridIndex: 1,
+                    data: k_data.categoryData,
+                    scale: true,
+                    boundaryGap: false,
+                    axisLine: {onZero: false},
+                    axisTick: {show: false},
+                    splitLine: {show: false},
+                    axisLabel: {show: false},
+                    splitNumber: 20,
+                    min: 'dataMin',
+                    max: 'dataMax'
+                }
+            ],
+            yAxis: [
+                {
+                    scale: true,
+                    splitArea: {
+                        show: true
+                    }
+                },
+                {
+                    scale: true,
+                    gridIndex: 1,
+                    splitNumber: 2,
+                    axisLabel: {show: false},
+                    axisLine: {show: false},
+                    axisTick: {show: false},
+                    splitLine: {show: false}
+                }
+            ],
+            dataZoom: [
+                {
+                    type: 'inside',
+                    xAxisIndex: [0, 1],
+                    start: 98,
+                    end: 100
+                },
+                {
+                    show: true,
+                    xAxisIndex: [0, 1],
+                    type: 'slider',
+                    top: '85%',
+                    start: 98,
+                    end: 100
+                }
+            ],
+            series: [
+                {
+                    name: '{{ cur_stock.NAME }}',
+                    type: 'candlestick',
+                    data: k_data.values,
+                    itemStyle: {
+                        color: upColor,
+                        color0: downColor,
+                        borderColor: null,
+                        borderColor0: null
+                    },
+                    tooltip: {
+                        formatter: function (param) {
+                            param = param[0];
+                            return [
+                                'Date: ' + param.name + '<hr size=1 style="margin: 3px 0">',
+                                'Open: ' + param.data[0] + '<br/>',
+                                'Close: ' + param.data[1] + '<br/>',
+                                'Lowest: ' + param.data[2] + '<br/>',
+                                'Highest: ' + param.data[3] + '<br/>'
+                            ].join('');
+                        }
+                    }
+                },
+                {
+                    name: 'MA5',
+                    type: 'line',
+                    data: calculateMA(5, k_data),
+                    smooth: true,
+                    lineStyle: {
+                        opacity: 0.5
+                    }
+                },
+                {
+                    name: 'MA10',
+                    type: 'line',
+                    data: calculateMA(10, k_data),
+                    smooth: true,
+                    lineStyle: {
+                        opacity: 0.5
+                    }
+                },
+                {
+                    name: 'MA20',
+                    type: 'line',
+                    data: calculateMA(20, k_data),
+                    smooth: true,
+                    lineStyle: {
+                        opacity: 0.5
+                    }
+                },
+                {
+                    name: 'MA30',
+                    type: 'line',
+                    data: calculateMA(30, k_data),
+                    smooth: true,
+                    lineStyle: {
+                        opacity: 0.5
+                    }
+                },
+                {
+                    name: 'Volume',
+                    type: 'bar',
+                    xAxisIndex: 1,
+                    yAxisIndex: 1,
+                    data: k_data.volumes
+                }
+            ]
+    }, true);
+    </script>
+{% endblock %}

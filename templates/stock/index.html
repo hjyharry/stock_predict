@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+{% extends 'login/base.html' %}
+{% load templatehelper %}
+{% block css %}
+{% endblock %}
+{% block title %}主页{% endblock %}
+
+{% block content %}
+    <div class="container-fluid">
+        <br>
+        <div class="row justify-content-md-center">
+            <div class="col">
+                <h6>主要行业：</h6>
+            </div>
+            <div class="col-lg-auto">
+                <form action="/index/" method="post">
+                {% csrf_token %}
+                    <div class="form-row">
+                        <div class="col-auto justify-content-sm-start">
+                            <select class="form-control" name="selected_category">
+                                {% for category in stock_categorys %}
+                                    <option value="{{ category.cate_id }}" {% if category.cate_id == current_id %}selected{% endif %}>{{ category.cate_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-auto">
+                            <button class="btn btn-secondary" type="submit" name="">查询</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <form action="/index/">
+            <table id="table" class="table table-sm table-striped table-hover"></table>
+        </form>
+        <form id="refresh" name="refresh" action="#" method="post" onsubmit="return checksubmit();">
+            {% csrf_token %}
+            <button id="refresh_btn" name="refresh_btn">获取最新股票信息</button>
+        </form>
+    </div>
+    <script>
+        var submit = false;
+        function checksubmit(){
+            if (!submit){
+                submit = true;
+                return true
+            }
+
+            console.log("请勿重复提交")
+            return false
+        }
+        function decimal(num,v){
+            var vv = Math.pow(10,v);
+            return Math.round(num * vv) / vv;
+        }
+        function thousand(num){
+            var n;
+            n = Math.round((num / 10000) * 100) / 100;
+            return String(n) + "万";
+        }
+        function million(num){
+            var n
+            n = Math.round((num /1000000) * 100) / 100;
+            return String(n) + "万";
+        }
+        function billion(num){
+            var n
+            n = Math.round((num /100000000) * 100) / 100;
+            return String(n) + "亿";
+        }
+        function trillion(num){
+            var n
+            n = Math.round((num /1000000000000) * 100) / 100;
+            return String(n) + "万亿";
+        }
+
+        var data = {{ cur_stocks|safe }};
+        $('#table').bootstrapTable('destroy').bootstrapTable({
+            data: data,
+            method:'POST',
+            pagination:true,
+            pageSize:16,
+            rememberOrder:true,
+            search:true,
+            columns:[
+                {
+                    title:"代码",
+                    field:"CODE_id",
+                    formatter:function (value){
+                        var href = '<a href="/index/' + value + '">' + value +'</a>'
+                        return href
+                    },
+                    sortable:true
+                },
+                {
+                    title:"名称",
+                    field:"NAME",
+                    formatter:function (value,row){
+                        var href = '<a href="/index/' + row.CODE_id + '">' + value + '</a>'
+                        return href
+                    }
+                },
+                {
+                    title:"价格",
+                    field:"PRICE",
+                    cellStyle:function (value,row){
+                        if (row.PERCENT > 0){
+                            return {css: {"color":"red"}}
+                        }else if (row.PERCENT == 0){
+                            return {css: {"color":"black"}}
+                        }else {
+                            return {css: {"color":"green"}}
+                        }
+                    },
+                    sortable:true
+                },
+                {
+                    title:"涨跌幅",
+                    field:"PERCENT",
+                    formatter:function (value) {
+                        return String(decimal(value * 100, 2)) + "%"
+                    },
+                    cellStyle:function (value){
+                        if (value > 0){
+                            return {css: {"color":"red"}}
+                        }else if (value == 0){
+                            return {css: {"color":"black"}}
+                        }else {
+                            return {css: {"color":"green"}}
+                        }
+                    },
+                    sortable:true
+                },
+                {
+                    title:"涨跌额",
+                    field:"UPDOWN",
+                    cellStyle:function (value,row){
+                        if (row.PERCENT > 0){
+                            return {css: {"color":"red"}}
+                        }else if (row.PERCENT == 0){
+                            return {css: {"color":"black"}}
+                        }else {
+                            return {css: {"color":"green"}}
+                        }
+                    },
+                    sortable:true,
+                },
+                {
+                    title:"5分钟涨跌额",
+                    field:"FIVE_MINUTE",
+                    formatter:function (value) {
+                        return String(decimal(value * 100, 2)) + "%"
+                    },
+                    cellStyle:function (value){
+                        if (value > 0){
+                            return {css: {"color":"red"}}
+                        }else if (value == 0){
+                            return {css: {"color":"black"}}
+                        }else {
+                            return {css: {"color":"green"}}
+                        }
+                    },
+                    sortable:true,
+                },
+                {
+                    title:"今开",
+                    field:"OPEN",
+                    cellStyle:function (value,row){
+                        if (value > row.YESTCLOSE){
+                            return {css: {"color":"red"}}
+                        }else if (value == row.YESTCLOSE){
+                            return {css: {"color":"black"}}
+                        }else {
+                            return {css: {"color":"green"}}
+                        }
+                    },
+                    sortable:true,
+                },
+                {
+                    title:"昨收",
+                    field:"YESTCLOSE",
+                    sortable:true
+                },
+                {
+                    title:"最高",
+                    field:"HIGH",
+                    cellStyle:function (value,row){
+                        if (value > row.YESTCLOSE){
+                            return {css: {"color":"red"}}
+                        }else if (value == row.YESTCLOSE){
+                            return {css: {"color":"black"}}
+                        }else {
+                            return {css: {"color":"green"}}
+                        }
+                    },
+                    sortable:true,
+                },
+                {
+                    title:"最低",
+                    field:"LOW",
+                    cellStyle:function (value,row){
+                        if (value > row.YESTCLOSE){
+                            return {css: {"color":"red"}}
+                        }else if (value == row.YESTCLOSE){
+                            return {css: {"color":"black"}}
+                        }else {
+                            return {css: {"color":"green"}}
+                        }
+                    },
+                    sortable:true,
+                },
+                {
+                    title:"成交量",
+                    field:"VOLUME",
+                    formatter:function (value){
+                        if (value > 99999999){
+                            return billion(value)
+                        }else{
+                            return million(value)
+                        }
+                    },
+                    sortable:true,
+                },
+                {
+                    title:"成交额",
+                    field:"TURNOVER",
+                    formatter:function (value){
+                        if (value < 10000){
+                            return value
+                        }else{
+                            if (value > 99999999){
+                                return billion(value)
+                            }else{
+                                return thousand(value)
+                            }
+                        }
+                    },
+                    sortable:true
+                },
+                {
+                    title:"换手率",
+                    field:"HS",
+                    formatter:function (value){
+                        return String(decimal(value * 100, 2)) + "%"
+                    },
+                    sortable:true,
+                },
+                {
+                    title:"量比",
+                    field:"LB",
+                    formatter:function (value){
+                        return decimal(value, 2)
+                    },
+                    sortable:true,
+                },
+                {
+                    title:"委比",
+                    field:"WB",
+                    formatter:function (value){
+                        return String(decimal(value * 100, 2)) + "%"
+                    },
+                    sortable:true
+                },
+                {
+                    title:"振幅",
+                    field:"ZF",
+                    formatter:function (value){
+                        return String(decimal(value * 100, 2)) + "%"
+                    },
+                    sortable:true
+                },
+                {
+                    title:"市盈率",
+                    field:"PE",
+                    formatter:function (value){
+                        return decimal(value, 2)
+                    },
+                    sortable:true,
+                },
+                {
+                    title:"流通市值",
+                    field:"MCAP",
+                    formatter:function (value){
+                        if (value > 999999999999){
+                            return trillion(value)
+                        }else{
+                            if (value > 99999999) {
+                                return billion(value)
+                            }else{
+                                if (value > 9999){
+                                    return thousand(value)
+                                }else {
+                                    return value
+                                }
+                            }
+                        }
+                    },
+                    sortable:true,
+                },
+                {
+                    title:"总市值",
+                    field:"TCAP",
+                    formatter:function (value){
+                        if (value > 999999999999){
+                            return trillion(value)
+                        }else{
+                            if (value > 99999999) {
+                                return billion(value)
+                            }else{
+                                if (value > 9999){
+                                    return thousand(value)
+                                }else {
+                                    return value
+                                }
+                            }
+                        }
+                    },
+                    sortable:true,
+                },
+                {
+                    title:"每股收益",
+                    field:"MFSUM",
+                    formatter:function (value){
+                        return decimal(value,2)
+                    },
+                    sortable:true,
+                },
+                {
+                    title:"净利润",
+                    field:"MFRATIO_1",
+                    formatter:function (value){
+                        if (value > 999999999999 || value < 0 - 999999999999){
+                            return trillion(value)
+                        }else{
+                            if (value > 99999999 || value < 0 - 99999999) {
+                                return billion(value)
+                            }else{
+                                if (value > 9999 || value < 0 - 9999){
+                                    return thousand(value)
+                                }else {
+                                    return value
+                                }
+                            }
+                        }
+                    },
+                    sortable:true,
+                },
+                {
+                    title:"主营收",
+                    field:"MFRATIO_2",
+                    formatter:function (value){
+                        if (value > 999999999999 || value < 0 - 999999999999){
+                            return trillion(value)
+                        }else{
+                            if (value > 99999999 || value < 0 - 99999999) {
+                                return billion(value)
+                            }else{
+                                if (value > 9999 || value < 0 - 9999){
+                                    return thousand(value)
+                                }else {
+                                    return value
+                                }
+                            }
+                        }
+                    },
+                    sortable:true,
+                }
+            ]
+        })
+    </script>
+{% endblock %}

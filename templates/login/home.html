@@ -1,0 +1,125 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <!-- 上述3个meta标签*必须*放在最前面，任何其他内容都*必须*跟随其后！ -->
+        <title>个人主页</title>
+        <script src="{% static 'JS/echarts.min.js' %}"></script>
+
+        <script src="{% static 'jquery/dist/jquery.min.js' %}"></script>
+        <script src="{% static 'bootstrap-table-master/dist/bootstrap-table.min.js' %}"></script>
+        <link href="{% static 'CSS/home.css' %}" rel="stylesheet">
+        <link href="{% static 'bootstrap-table-master/dist/bootstrap-table.min.css' %}" rel="stylesheet">
+
+        <script src="{% static 'bootstrap-4.4.1-dist/js/bootstrap.min.js' %}"></script>
+        <link href="{% static 'bootstrap-4.4.1-dist/css/bootstrap.css' %}" rel="stylesheet">
+    </head>
+
+    <body>
+        <div class="head container">
+            <nav class="navbar navbar-expand-md navbar-dark bg-dark">
+                <div class="navbar-nav">
+                    <ul class="nav navbar-nav mr-auto">
+                        <li><a class="nav-item nav-link active" href="/index/">主页</a></li>
+                    </ul>
+                </div>
+                <div class="navbar-collapse collapse">
+                    {% if request.session.is_login %}
+                        <ul class="nav navbar-nav ml-auto">
+                            <li><a class="nav-item nav-link" href="/logout/">登出</a></li>
+                        </ul>
+                    {% else %}
+                        <ul class="nav navbar-nav ml-auto">
+                            <li><a class="nav-item nav-link" href="/register/">注册</a></li>
+                            <li><a class="nav-item nav-link" href="/login/">登陆</a></li>
+                        </ul>
+                    {% endif %}
+                </div>
+            </nav>
+        </div>
+        <div class="container">
+            <nav class="navbar navbar-expand-md navbar-light bg-light">
+                <div class="image">
+                    <img src="/static/image/img.png" class="rounded-circle" height="100px" width="100px">
+                </div>
+                <div class="content">
+                    <div class="user_name">
+                        昵称:
+                    </div>
+                    <div class="user_intro">
+                        简介:
+                    </div>
+                    <div class="user_job">
+                        从事工作:
+                    </div>
+                </div>
+            </nav>
+        </div>
+        <br>
+        <div class="container">
+            <div class="row">
+                <div class="col">
+                    <div id="favourite">
+                        <div class="card">
+                            <div class="card-header">
+                                <a class="card-link" data-toggle="collapse" href="#myFavourite">我的喜欢</a>
+                            </div>
+                            <div id="myFavourite" class="collapse show">
+                                <div class="card-body">
+                                    <table id="favourite_list" class="table table-hover table-borderless"></table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>
+
+<script>
+    var data = {{ favourite_list|safe }}
+    $('#favourite_list').bootstrapTable('destroy').bootstrapTable({
+        data:data,
+        method:'POST',
+        pagination:true,
+        pageSize:8,
+        columns:[
+            {
+                title:'代码',
+                field:'code',
+                formatter:function (value){
+                    var href = '<a href="/index/' + value + '">' + value +'</a>'
+                    return href
+                },
+            },
+            {
+                title:'名称',
+                field:'code__cur_stock__NAME',
+                formatter:function (value,row){
+                    var href = '<a href="/index/' + row.code + '">' + value + '</a>'
+                    return href
+                }
+            },
+            {
+                title:'价格',
+                field:'code__cur_stock__PRICE',
+            },
+            {
+                title:'开盘价',
+                field:'code__cur_stock__OPEN',
+            },
+            {
+                title:'最高价',
+                field:'code__cur_stock__HIGH',
+            },
+            {
+                title:'最低价',
+                field:'code__cur_stock__LOW'
+            }
+        ]
+    })
+</script>

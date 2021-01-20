@@ -1,0 +1,23 @@
+.image {
+    margin-top: 5px;
+    margin-left: 20px;
+}
+
+.content {
+    margin-left: 35px;
+    margin-top: -20px;
+    color: black;
+}
+
+.user_intro {
+    margin-top: 5px;
+}
+
+.user_job {
+    margin-top: 5px;
+}
+
+.rounded-circle {
+    width: 100px;
+    height: 100px;
+}
