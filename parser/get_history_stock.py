@@ -2,6 +2,8 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import pymysql
+import numpy as np
+import datetime
 
 content_list = []
 
@@ -18,7 +20,7 @@ def get_code():
 
     return code_list
 
-def get_start_year(code):
+def get_start_date(code):
     url = "http://quotes.money.163.com/trade/lsjysj_{}.html#01b07".format(code)
     try:
         response = requests.get(url=url)
@@ -29,14 +31,27 @@ def get_start_year(code):
     except:
         pass
 
+def get_current_date():
+    current_time = int(datetime.datetime.now().hour)
+
+    if current_time >= 17:
+        current_date = str(datetime.datetime.now().date()).replace('-','')
+    else:
+        today = datetime.date.today()
+        oneday = datetime.timedelta(days=1)
+        yesterday = today - oneday
+        current_date = str(yesterday).replace('-','')
+
+    return current_date
+
 
 def get_stock_history(code):
     if code[:1] in ["0", "1", "2", "3"]:
-        url = "http://quotes.money.163.com/service/chddata.html?code=1{code}&start={start}&end=20210107&fields=TCLOSE;HIGH;LOW;TOPEN;LCLOSE;CHG;PCHG;TURNOVER;VOTURNOVER;VATURNOVER;TCAP;MCAP".format(
-            code=code, start=get_start_year(code))
+        url = "http://quotes.money.163.com/service/chddata.html?code=1{code}&start={start}&end={end}&fields=TCLOSE;HIGH;LOW;TOPEN;LCLOSE;CHG;PCHG;TURNOVER;VOTURNOVER;VATURNOVER;TCAP;MCAP".format(
+            code=code, start=get_start_date(code),end=get_current_date())
     else:
-        url = "http://quotes.money.163.com/service/chddata.html?code=0{code}&start={start}&end=20210107&fields=TCLOSE;HIGH;LOW;TOPEN;LCLOSE;CHG;PCHG;TURNOVER;VOTURNOVER;VATURNOVER;TCAP;MCAP".format(
-            code=code, start=get_start_year(code))
+        url = "http://quotes.money.163.com/service/chddata.html?code=0{code}&start={start}&end={end}&fields=TCLOSE;HIGH;LOW;TOPEN;LCLOSE;CHG;PCHG;TURNOVER;VOTURNOVER;VATURNOVER;TCAP;MCAP".format(
+            code=code, start=get_start_date(code),end=get_current_date())
 
     try:
         response = requests.get(url=url).content
@@ -53,7 +68,7 @@ def get_stock_history(code):
         'date', 'code', 'name', 'close', 'high', 'low', 'open', 'yest_close', 'updown', 'percent', 'hs', 'volumn',
         'turnover', 'tcap', 'mcap')
 
-        df.replace('None', '0', inplace=True)
+        df.replace('None', np.nan, inplace=True)
 
         df['date'] = pd.to_datetime(df['date'])
         df['close'] = df['close'].astype(float)

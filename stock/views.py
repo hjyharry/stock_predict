@@ -11,6 +11,7 @@ import random
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
+import pymysql
 
 def refresh(request):
     cur_stock = CUR_STOCK.objects.values()
@@ -89,7 +90,7 @@ def stock_detail(request):
             end_date = datetime.date(year, 12, 31)
             current_season = "all"
 
-        selected_stock = history_data.objects.filter(code=id,date__range=(start_date,end_date)).values()
+        selected_stock = history_data.objects.filter(code=id,date__range=(start_date,end_date), updown__isnull=False, percent__isnull=False, hs__isnull=False,tcap__isnull=False,mcap__isnull=False).values()
         selected_stock = list(selected_stock)
 
         for i in range(len(selected_stock)):
@@ -167,6 +168,22 @@ headers = {
     'Referer': 'http://quotes.money.163.com/old/'
 }
 
+def get_db_code():
+    try:
+        conn = pymysql.connect("localhost", "root", "hjyharry981221", "stock")
+        cursor = conn.cursor()
+        sql = '''select * from stock_relate'''
+        cursor.execute(sql)
+        data = cursor.fetchall()
+    except:
+        cursor.DatabaseError
+        return 0
+
+    db_code = []
+    for i in range(len(data)):
+        db_code.append(data[i][0])
+
+    return db_code
 
 def get_catgory_id():
     url = "http://quotes.money.163.com/old/#query=hy001000&DataType=HS_RANK&sort=PERCENT&order=desc&count=24&page=0"
@@ -242,8 +259,11 @@ def get_cur_detail(category_id):
 
 def main():
     cur_detail_list = []
+    db_code = get_db_code()
+
     for i in range(len(get_catgory_id())):
         cur_detail_list.append(get_cur_detail(get_catgory_id()[i]['cate_id']))
         cur_detail_df = pd.concat(cur_detail_list,ignore_index=True)
 
+    cur_detail_df = cur_detail_df[cur_detail_df['CODE'].isin(db_code)]
     cur_detail_df.to_sql(name='cur_stock',con='mysql+pymysql://root:hjyharry981221@localhost:3306/stock?charset=utf8',if_exists='append',index=False)

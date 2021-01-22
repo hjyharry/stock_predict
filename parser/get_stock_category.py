@@ -3,6 +3,7 @@ import requests
 from bs4 import BeautifulSoup
 import json
 import pandas as pd
+from stock.models import stock_relate
 
 USER_AGENTS = [
     "Mozilla/5.0 (Windows; U; Windows NT 5.2) Gecko/2008070208 Firefox/3.0.1"
@@ -80,8 +81,17 @@ def parse_stock_category(category_id):
 
 if __name__ == '__main__':
     stock_category_list = []
-    for i in range(len(get_catgory_id())):
-        stock_category_list.append(parse_stock_category(get_catgory_id()[i]['cate_id']))
+    db_code = []
+
+    cate_list = get_catgory_id()
+
+    db_sr = list(stock_relate.objects.values())
+    for i in range(len(db_sr)):
+        db_code.append(db_sr[i]['code'])
+
+    for i in range(len(cate_list)):
+        detail = parse_stock_category(cate_list[i]['cate_id'])
+        stock_category_list.append(detail)
         stock_category_df = pd.concat(stock_category_list,ignore_index=True)
 
     stock_category_df.to_sql(name='stock_relate',con='mysql+pymysql://root:hjyharry981221@localhost:3306/stock?charset=utf8',if_exists='append',index=False)
